@@ -362,9 +362,8 @@ Hbs.prototype.registerPartials = async function () {
         });
     }
 
-    var theme = self.getTheme();
     try {
-        var partialsPath = path.resolve(self.partialsPath, theme);
+        var partialsPath = self.partialsPath;
         var resultList = await readdir(partialsPath);
         var files = [];
         var names = [];
@@ -376,7 +375,7 @@ Hbs.prototype.registerPartials = async function () {
         // Generate list of files and template names
         resultList.forEach(function (result, i) {
             files.push(path.join(partialsPath, result));
-            names.push(theme + result.slice(0, -1 * self.extname.length));
+            names.push(result.slice(0, -1 * self.extname.length));
         });
 
         // Read all the partial from disk
