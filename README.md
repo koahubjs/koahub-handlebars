@@ -1,35 +1,96 @@
-koahub handlebars templates
+[koa]:https://github.com/koajs/koa/
+[handlebars]:http://handlebarsjs.com
 
-## Installation
+koahub-handlebars
+=======
 
-```sh
-$ npm install koahub-handlebars
+[Handlebars][handlebars] templates via Async/await for [Koa][koa]
+
+[![Build Status][travis-badge]][repo-url]
+
+## Usage
+koahub-handlebars is middleware. We stash an instance of koahub-handlebars for you in the library
+so you don't have to manage it separately. Configure the default instance by
+passing an [options](#options) hash to #middleware. To render a template then,
+just `await ctx.render('templateName');`. Here's a basic app demonstrating all that:
+
+```javascript
+var koa = require('koa');
+var hbs = require('koahub-handlebars');
+
+var app = koa();
+
+// koahub-handlebars is middleware. `use` it before you want to render a view
+app.use(hbs.middleware({
+    extname: '.html',
+    viewPath: './www',
+    layoutsPath: './www',
+    partialsPath: './www',
+    disableCache: true
+}));
+
+// Render is attached to the koa context. Call `ctx.render` in your middleware
+// to attach rendered html to the koa response body.
+app.use(async function (ctx, next) {
+  //set theme
+  ctx.state.theme = 'home';
+  await ctx.render('main', {title: 'koahub-handlebars'});
+})
+
+app.listen(3000);
 ```
 
-## Use with koa
+After a template has been rendered, the template function is cached. `#render`
+accepts two arguements - the template to render, and an object containing local
+variables to be inserted into the template. The result is assigned to Koa's
+`this.response.body`.
 
-```js
- var koa = require('koa');
- var hbs = require('koahub-handlebars');
+## Options
+The plan for koahub-handlebars is to offer identical functionality as express-hbs
+(eventaully). These options are supported _now_.
 
- var app = koa();
+#### `viewPath` _required_
+Type: `Array|String`  
+Full path from which to load templates
 
- // koahub-handlebars is middleware. `use` it before you want to render a view
- app.use(hbs.middleware({
-   viewPath: __dirname + '/views'
- }));
+#### `handlebars`
+Type:`Object:Handlebars`  
+Pass your own instance of handlebars
 
- // Render is attached to the koa context. Call `this.render` in your middleware
- // to attach rendered html to the koa response body.
- app.use(function *() {
-   yield this.render('index', {title: 'koahub-handlebars'});
- })
+#### `templateOptions`
+Type: `Object`  
+Hash of [handlebars options](http://handlebarsjs.com/execution.html#Options) to
+pass to `template()`
 
- app.listen(3000);
+#### `extname`
+Type:`String`  
+Alter the default template extension (default: `'.hbs'`)
 
-```
+#### `partialsPath`
+Type:`Array|String`  
+Full path to partials directory
 
-### Registering Helpers
+#### `defaultLayout`
+Type:`String`  
+Name of the default layout
+
+#### `layoutsPath`
+Type:`String`  
+Full path to layouts directory
+
+#### `contentHelperName`
+Type:`String`  
+Alter `contentFor` helper name
+
+#### `blockHelperName`
+Type:`String`  
+Alter `block` helper name
+
+#### `disableCache`
+Type:`Boolean`  
+Disable template caching
+
+## Registering Helpers
 Helpers are registered using the #registerHelper method. Here is an example
 using the default instance (helper stolen from official Handlebars
 [docs](http://handlebarsjs.com):
@@ -65,7 +126,7 @@ hbs.registerHelper('requestURL', function() {
 });
 ```
 
-### Registering Partials
+## Registering Partials
 The simple way to register partials is to stick them all in a directory, and
 pass the `partialsPath` option when generating the middleware. Say your views
 are in `./views`, and your partials are in `./views/partials`. Configuring the
@@ -78,9 +139,11 @@ app.use(hbs.middleware({
 }));
 ```
 
-will cause them to be automatically registered. Alternatively, you may register partials one at a time by calling `hbs.registerPartial` which proxies to the cached handlebars `#registerPartial` method.
+will cause them to be automatically registered. Alternatively, you may register
+partials one at a time by calling `hbs.registerPartial` which proxies to the
+cached handlebars `#registerPartial` method.
 
-### Layouts
+## Layouts
 Passing `defaultLayout` with the a layout name will cause all templates to be
 inserted into the `{{{body}}}` expression of the layout. This might look like
 the following.
@@ -100,39 +163,68 @@ the following.
 In addition to, or alternatively, you may specify a layout to render a template
 into. Simply specify `{{!< layoutName }}` somewhere in your template. koahub-handlebars
 will load your layout from `layoutsPath` if defined, or from `viewPath`
-otherwise.
+otherwise. If `viewPath` is set to an Array of paths, **_the first path in the
+array will be assumed to contain the layout named._**
 
 At this time, only a single content block (`{{{body}}}`) is supported.
 
-### Options
-The plan for koahub-handlebars is to offer identical functionality as koa-hbs
-(eventaully). These options are supported _now_.
+## Overriding Layouts using Locals
 
-- `viewPath`: [_required_] Full path from which to load templates
-  (`Array|String`)
-- `handlebars`: Pass your own instance of handlebars
-- `templateOptions`: Hash of
-  [handlebars options](http://handlebarsjs.com/execution.html#Options) to pass
-  to `template()`
-- `extname`: Alter the default template extension (default: `'.html'`)
-- `partialsPath`: Full path to partials directory (`Array|String`)
-- `defaultLayout`: Name of the default layout
-- `layoutsPath`: Full path to layouts directory (`String`)
-- `disableCache`: Disable template caching (default: `'.true'`)
+As of version 0.9.0, it's possible to override the layout used for rendering,
+using `locals`. For example:
 
-### Locals
+```js
+router.get('/', async function (ctx, next) {
+  await this.render('foo', {
+    layout: 'bar'
+  });
+ });
+```
+
+See the [tests](https://github.com/gilt/koahub-handlebars/blob/master/test/app/index.js#L44)
+for more.
+
+## Block content
+Reserve areas in a layout by using the `block` helper like so.
+
+```html
+{{#block "sidebar"}}
+  <!-- default content for the sidebar block -->
+{{/block}}
+```
+
+Then in a template, use the `contentFor` helper to render content into the
+block.
+
+```html
+{{#contentFor "sidebar"}}
+  <aside>
+    <h2>{{sidebarTitleLocal}}</h2>
+    <p>{{sidebarContentLocal}}</p>
+  </aside>
+{{/contentFor}}
+```
+
+## Disable Template Caching
+To disable the caching of templates and partials, use the `disableCache` option.
+Set this option to `true` to disable caching. Default is `false`.
+*Remember to set this option to `false` for production environments, or performance
+could be impacted!*
+
+## Locals
 
 Application local variables (```[this.state](https://github.com/koajs/koa/blob/master/docs/api/context.md#ctxstate)```) are provided to all templates rendered within the application.
 
 ```javascript
-app.use(function *(next) {
+app.use(async function (ctx, next) {
   this.state.title = 'My App';
   this.state.email = 'me@myapp.com';
-  yield next;
+  await next();
 });
 ```
 
-The state object is a JavaScript Object. The properties added to it will be exposed as local variables within your views.
+The state object is a JavaScript Object. The properties added to it will be
+exposed as local variables within your views.
 
 ```
 <title>{{title}}</title>
@@ -140,16 +232,31 @@ The state object is a JavaScript Object. The properties added to it will be expo
 <p>Contact : {{email}}</p>
 ```
 
-## Thanks
-[koa-hbs](https://github.com/jwilm/koa-hbs)
+## Example
+You can run the included example via `npm install koa` and
+`node --harmony app.js` from the example folder.
 
-## Differents
-1. Configuration file incremental changes
-2. Modify some of the features and the default configuration
-3. ...
+## Unsupported Features
 
+Here's a few things _koahub-handlebars_ does not plan to support unless someone can
+provide really compelling justification.
 
-##
-官网：[http://js.koahub.com](http://js.koahub.com)
+### Async Helpers
+_koahub-handlebars_ does not support asynchronous helpers. No, really - just load your
+data before rendering a view. This helps on performance and separation of
+concerns in your app.
 
-[![image](http://www.koahub.com/public/ad.jpg "koahub软件市场")](http://www.koahub.com)
+## Handlebars Version
+
+As of koahub-handlebars@0.9.0, the version of the Handlebars dependency bundled with this
+module has been updated to 4.0.x. If this causes conflicts for your project, you
+may pass your own instance of Handlebars to the module, or downgrade to the last
+0.8.x version.
+
+## Credits
+Functionality and code were inspired/taken from
+[koahub-handlebars](https://github.com/gilt/koahub-handlebars).
+Many thanks to [@jwilm](https://github.com/jwilm) for authoring this middleware.
+
+[travis-badge]: https://travis-ci.org/gilt/koahub-handlebars.png?branch=master
+[repo-url]: https://travis-ci.org/gilt/koahub-handlebars

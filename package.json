@@ -1,30 +1,39 @@
 {
-  "name": "koahub-handlebars",
-  "version": "1.0.1",
+  "author": {
+    "name": "js.koahub.com"
+  },
+  "bugs": {
+    "url": "https://github.com/einsqing/koahub-handlebars/issues"
+  },
+  "dependencies": {
+    "glob": "^7.0.5",
+    "handlebars": "^4.0.5"
+  },
   "description": "koahub-handlebars",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/einsqing/koahub-handlebars.git"
-  },
+  "devDependencies": {},
+  "directories": {},
+  "homepage": "https://github.com/einsqing/koahub-handlebars#readme",
   "keywords": [
     "koa",
     "koahub-handlebars",
     "middleware"
   ],
-  "author": {
-    "name": "js.koahub.com"
-  },
   "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/einsqing/koahub-handlebars/issues"
+  "main": "./lib/index.js",
+  "maintainers": [
+    {
+      "name": "einsqing",
+      "email": "786699892@qq.com"
+    }
+  ],
+  "name": "koahub-handlebars",
+  "optionalDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/einsqing/koahub-handlebars.git"
   },
-  "homepage": "https://github.com/einsqing/koahub-handlebars#readme",
-  "dependencies": {
-    "handlebars": "^2.0.0",
-    "glob": "^7.0.5"
-  }
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "version": "2.0.0"
 }
