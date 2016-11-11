@@ -25,8 +25,7 @@ app.use(hbs.middleware({
     extname: '.html',
     viewPath: './www',
     layoutsPath: './www',
-    partialsPath: './www',
-    disableCache: true
+    partialsPath: './www'
 }));
 
 // Render is attached to the koa context. Call `ctx.render` in your middleware
@@ -207,7 +206,7 @@ block.
 
 ## Disable Template Caching
 To disable the caching of templates and partials, use the `disableCache` option.
-Set this option to `true` to disable caching. Default is `false`.
+Set this option to `false` to disable caching. Default is `true`.
 *Remember to set this option to `false` for production environments, or performance
 could be impacted!*
 
