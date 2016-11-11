@@ -173,98 +173,83 @@ Hbs.prototype.configure = function (options) {
 Hbs.prototype.middleware = function (options) {
     this.configure(options);
 
-    var render = this.createRenderer();
-
-    return async function (ctx, next) {
-        ctx.render = render;
-        await next();
-    }
-};
-
-/**
- *
- * set theme
- */
-Hbs.prototype.getTheme = function () {
-    var theme = '';
-    if (ctx.state.theme) {
-        theme = ctx.state.theme + '/';
-    }
-
-    return theme;
-}
-/**
- * Create a render generator to be attached to koa context
- */
-
-Hbs.prototype.createRenderer = function () {
     var hbs = this;
 
-    return async function (tpl, locals) {
-        var theme = hbs.getTheme();
-        var tplPath = hbs.getTemplatePath(theme + tpl),
-            template, rawTemplate, layoutTemplate;
+    // Initialization... move these actions into another function to remove
+    // unnecessary checks
+    if (hbs.disableCache || !hbs.partialsRegistered && hbs.partialsPath !== '') {
+        hbs.registerPartials();
+    }
 
-        if (!tplPath) {
-            throw new MissingTemplateError('The template specified does not exist.', tplPath);
-        }
+    return async function (ctx, next) {
 
-        // allow absolute paths to be used
-        if (path.isAbsolute(tpl)) {
-            tplPath = tpl + hbs.extname;
-        }
+        ctx.render = async function (tpl, locals) {
 
-        locals = merge(ctx.state || {}, locals || {});
-        locals = merge(hbs.locals, locals);
+            var theme = '';
+            if (ctx.state.theme) {
+                theme = ctx.state.theme + '/';
+            }
 
-        // Initialization... move these actions into another function to remove
-        // unnecessary checks
-        if (hbs.disableCache || !hbs.partialsRegistered && hbs.partialsPath !== '') {
-            await hbs.registerPartials();
-        }
+            var tplPath = hbs.getTemplatePath(theme + tpl),
+                template, rawTemplate, layoutTemplate;
 
-        // Load the template
-        if (hbs.disableCache || !hbs.cache[tpl]) {
-            rawTemplate = await read(tplPath);
-            hbs.cache[tpl] = {
-                template: hbs.handlebars.compile(rawTemplate)
-            };
+            if (!tplPath) {
+                throw new MissingTemplateError('The template specified does not exist.', tplPath);
+            }
 
-            // Load layout if specified
-            if (typeof locals.layout !== 'undefined' || rLayoutPattern.test(rawTemplate)) {
-                var layout = locals.layout;
+            // allow absolute paths to be used
+            if (path.isAbsolute(tpl)) {
+                tplPath = tpl + hbs.extname;
+            }
 
-                if (typeof layout === 'undefined') {
-                    layout = rLayoutPattern.exec(rawTemplate)[1];
-                }
+            locals = merge(ctx.state || {}, locals || {});
+            locals = merge(hbs.locals, locals);
 
-                if (layout !== false) {
-                    var rawLayout = await hbs.loadLayoutFile(layout);
-                    hbs.cache[tpl].layoutTemplate = hbs.handlebars.compile(rawLayout);
-                } else {
-                    hbs.cache[tpl].layoutTemplate = hbs.handlebars.compile('{{{body}}}');
+            // Load the template
+            if (hbs.disableCache || !hbs.cache[tpl]) {
+                rawTemplate = await read(tplPath);
+                hbs.cache[tpl] = {
+                    template: hbs.handlebars.compile(rawTemplate)
+                };
+
+                // Load layout if specified
+                if (typeof locals.layout !== 'undefined' || rLayoutPattern.test(rawTemplate)) {
+                    var layout = locals.layout;
+
+                    if (typeof layout === 'undefined') {
+                        layout = rLayoutPattern.exec(rawTemplate)[1];
+                    }
+
+                    if (layout !== false) {
+                        var rawLayout = await hbs.loadLayoutFile(layout);
+                        hbs.cache[tpl].layoutTemplate = hbs.handlebars.compile(rawLayout);
+                    } else {
+                        hbs.cache[tpl].layoutTemplate = hbs.handlebars.compile('{{{body}}}');
+                    }
                 }
             }
-        }
 
-        template = hbs.cache[tpl].template;
-        layoutTemplate = hbs.cache[tpl].layoutTemplate;
-        if (!layoutTemplate) {
-            layoutTemplate = await hbs.getLayoutTemplate();
-        }
+            template = hbs.cache[tpl].template;
+            layoutTemplate = hbs.cache[tpl].layoutTemplate;
+            if (!layoutTemplate) {
+                layoutTemplate = await hbs.getLayoutTemplate();
+            }
 
-        // Add the current koa context to templateOptions.data to provide access
-        // to the request within helpers.
-        if (!hbs.templateOptions.data) {
-            hbs.templateOptions.data = {};
-        }
+            // Add the current koa context to templateOptions.data to provide access
+            // to the request within helpers.
+            if (!hbs.templateOptions.data) {
+                hbs.templateOptions.data = {};
+            }
 
-        hbs.templateOptions.data = merge(hbs.templateOptions.data, {koa: this});
+            hbs.templateOptions.data = merge(hbs.templateOptions.data, {koa: this});
 
-        // Run the compiled templates
-        locals.body = template(locals, hbs.templateOptions);
-        ctx.body = layoutTemplate(locals, hbs.templateOptions);
-    };
+            // Run the compiled templates
+            locals.body = template(locals, hbs.templateOptions);
+            ctx.body = layoutTemplate(locals, hbs.templateOptions);
+        };
+
+        await next();
+    }
 };
 
 /**
