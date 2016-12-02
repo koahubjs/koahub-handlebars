@@ -136,7 +136,7 @@ Hbs.prototype.configure = function (options) {
     this.defaultLayout = options.defaultLayout || '';
     this.layoutsPath = options.layoutsPath || '';
     this.locals = options.locals || {};
-    this.disableCache = options.disableCache == false ? options.disableCache : true;
+    this.disableCache = options.disableCache != undefined ? options.disableCache : true;
     this.partialsRegistered = false;
 
     // Cache templates and layouts
