@@ -136,7 +136,7 @@ Hbs.prototype.configure = function (options) {
     this.defaultLayout = options.defaultLayout || '';
     this.layoutsPath = options.layoutsPath || '';
     this.locals = options.locals || {};
-    this.disableCache = options.disableCache || true;
+    this.disableCache = options.disableCache == false ? options.disableCache : true;
     this.partialsRegistered = false;
 
     // Cache templates and layouts
@@ -188,6 +188,10 @@ Hbs.prototype.middleware = function (options) {
             var theme = '';
             if (ctx.state.theme) {
                 theme = ctx.state.theme + '/';
+            }
+
+            if (hbs.disableCache || !hbs.partialsRegistered && hbs.partialsPath !== '') {
+                await hbs.registerPartials();
             }
 
             var tplPath = hbs.getTemplatePath(theme + tpl),

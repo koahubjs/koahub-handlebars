@@ -33,7 +33,8 @@
     "url": "git+https://github.com/einsqing/koahub-handlebars.git"
   },
   "scripts": {
+    "compile": "babel src/ --out-dir lib/ --watch --source-maps",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "version": "2.0.3"
+  "version": "2.0.4"
 }
