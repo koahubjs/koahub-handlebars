@@ -35,6 +35,7 @@ var merge = function (obj1, obj2) {
 
 /* Capture the layout name; thanks express-hbs */
 var rLayoutPattern = /{{!<\s+([A-Za-z0-9\._\-\/]+)\s*}}/;
+var rPartialPattern = /{{>\s+([A-Za-z0-9\._\-\/]+)\s*}}/g;
 
 /**
  * file reader returning a thunk
@@ -136,8 +137,6 @@ Hbs.prototype.configure = function (options) {
     this.defaultLayout = options.defaultLayout || '';
     this.layoutsPath = options.layoutsPath || '';
     this.locals = options.locals || {};
-    this.disableCache = options.disableCache != undefined ? options.disableCache : true;
-    this.partialsRegistered = false;
 
     // Cache templates and layouts
     this.cache = {};
@@ -175,9 +174,7 @@ Hbs.prototype.middleware = function (options) {
 
     var hbs = this;
 
-    // Initialization... move these actions into another function to remove
-    // unnecessary checks
-    if (hbs.disableCache || !hbs.partialsRegistered && hbs.partialsPath !== '') {
+    if (hbs.partialsPath !== '') {
         hbs.registerPartials();
     }
 
@@ -190,12 +187,8 @@ Hbs.prototype.middleware = function (options) {
                 theme = ctx.state.theme + '/';
             }
 
-            if (hbs.disableCache || !hbs.partialsRegistered && hbs.partialsPath !== '') {
-                await hbs.registerPartials();
-            }
-
             var tplPath = hbs.getTemplatePath(theme + tpl),
-                template, rawTemplate, layoutTemplate;
+                template, rawTemplate, layoutTemplate, partials = [];
 
             if (!tplPath) {
                 throw new MissingTemplateError('The template specified does not exist.', tplPath);
@@ -210,26 +203,31 @@ Hbs.prototype.middleware = function (options) {
             locals = merge(hbs.locals, locals);
 
             // Load the template
-            if (hbs.disableCache || !hbs.cache[tpl]) {
-                rawTemplate = await read(tplPath);
-                hbs.cache[tpl] = {
-                    template: hbs.handlebars.compile(rawTemplate)
-                };
+            rawTemplate = await read(tplPath);
+            hbs.cache[tpl] = {
+                template: hbs.handlebars.compile(rawTemplate)
+            };
 
-                // Load layout if specified
-                if (typeof locals.layout !== 'undefined' || rLayoutPattern.test(rawTemplate)) {
-                    var layout = locals.layout;
+            // register template partials
+            var partial;
+            while ((partial = rPartialPattern.exec(rawTemplate)) != null) {
+                partials.push(partial[1] + hbs.extname);
+            }
+            await hbs.registerPartials(partials);
 
-                    if (typeof layout === 'undefined') {
-                        layout = rLayoutPattern.exec(rawTemplate)[1];
-                    }
+            // Load layout if specified
+            if (typeof locals.layout !== 'undefined' || rLayoutPattern.test(rawTemplate)) {
+                var layout = locals.layout;
 
-                    if (layout !== false) {
-                        var rawLayout = await hbs.loadLayoutFile(layout);
-                        hbs.cache[tpl].layoutTemplate = hbs.handlebars.compile(rawLayout);
-                    } else {
-                        hbs.cache[tpl].layoutTemplate = hbs.handlebars.compile('{{{body}}}');
-                    }
+                if (typeof layout === 'undefined') {
+                    layout = rLayoutPattern.exec(rawTemplate)[1];
+                }
+
+                if (layout !== false) {
+                    var rawLayout = await hbs.loadLayoutFile(layout);
+                    hbs.cache[tpl].layoutTemplate = hbs.handlebars.compile(rawLayout);
+                } else {
+                    hbs.cache[tpl].layoutTemplate = hbs.handlebars.compile('{{{body}}}');
                 }
             }
 
@@ -272,17 +270,14 @@ Hbs.prototype.getLayoutPath = function (layout) {
  * Lazy load default layout in cache.
  */
 Hbs.prototype.getLayoutTemplate = async function () {
-    if (this.disableCache || !this.layoutTemplate) {
-        this.layoutTemplate = await this.cacheLayout();
-    }
-    return this.layoutTemplate;
+    return await this.getLayout();
 }
 
 /**
  * Get a default layout. If none is provided, make a noop
  */
 
-Hbs.prototype.cacheLayout = async function (layout) {
+Hbs.prototype.getLayout = async function (layout) {
     var hbs = this;
 
     // Create a default layout to always use
@@ -337,7 +332,7 @@ Hbs.prototype.registerPartial = function () {
  * Register directory of partials
  */
 
-Hbs.prototype.registerPartials = async function () {
+Hbs.prototype.registerPartials = async function (partials = []) {
     var self = this;
 
     var readdir = function (root) {
@@ -353,7 +348,13 @@ Hbs.prototype.registerPartials = async function () {
 
     try {
         var partialsPath = self.partialsPath;
-        var resultList = await readdir(partialsPath);
+        var resultList = [];
+        if (partials.length) {
+            resultList = partials;
+        } else {
+            resultList = await readdir(partialsPath);
+        }
+
         var files = [];
         var names = [];
 
@@ -378,8 +379,6 @@ Hbs.prototype.registerPartials = async function () {
         for (var i = 0; i !== partials.length; i++) {
             self.registerPartial(names[i], partials[i]);
         }
-
-        self.partialsRegistered = true;
     } catch (e) {
         console.error('Error caught while registering partials');
         console.error(e);
@@ -394,8 +393,8 @@ Hbs.prototype.getTemplatePath = function getTemplatePath(tpl) {
     var tplPath = path.join(this.viewPath, tpl + this.extname);
     try {
         fs.statSync(tplPath);
-        if (!this.disableCache)
-            cache[tpl] = tplPath;
+
+        cache[tpl] = tplPath;
 
         return tplPath;
     } catch (e) {

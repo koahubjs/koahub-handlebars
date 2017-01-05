@@ -85,10 +85,6 @@ Alter `contentFor` helper name
 Type:`String`  
 Alter `block` helper name
 
-#### `disableCache`
-Type:`Boolean`  
-Disable template caching
-
 ## Registering Helpers
 Helpers are registered using the #registerHelper method. Here is an example
 using the default instance (helper stolen from official Handlebars
@@ -203,12 +199,6 @@ block.
   </aside>
 {{/contentFor}}
 ```
-
-## Disable Template Caching
-To disable the caching of templates and partials, use the `disableCache` option.
-Set this option to `false` to disable caching. Default is `true`.
-*Remember to set this option to `false` for production environments, or performance
-could be impacted!*
 
 ## Locals
 
