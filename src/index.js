@@ -209,11 +209,13 @@ Hbs.prototype.middleware = function (options) {
             };
 
             // register template partials
-            var partial;
-            while ((partial = rPartialPattern.exec(rawTemplate)) != null) {
-                partials.push(partial[1] + hbs.extname);
+            if (hbs.partialsPath !== '') {
+                var partial;
+                while ((partial = rPartialPattern.exec(rawTemplate)) != null) {
+                    partials.push(partial[1] + hbs.extname);
+                }
+                await hbs.registerPartials(partials);
             }
-            await hbs.registerPartials(partials);
 
             // Load layout if specified
             if (typeof locals.layout !== 'undefined' || rLayoutPattern.test(rawTemplate)) {
