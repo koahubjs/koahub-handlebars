@@ -137,6 +137,7 @@ Hbs.prototype.configure = function (options) {
     this.defaultLayout = options.defaultLayout || '';
     this.layoutsPath = options.layoutsPath || '';
     this.locals = options.locals || {};
+    this.disableCache = options.disableCache != undefined ? options.disableCache : true;
 
     // Cache templates and layouts
     this.cache = {};
@@ -208,13 +209,14 @@ Hbs.prototype.middleware = function (options) {
                 template: hbs.handlebars.compile(rawTemplate)
             };
 
-            // register template partials
-            if (hbs.partialsPath !== '') {
+            // register template partials from template
+            if (hbs.partialsPath !== '' && this.disableCache) {
                 var partial;
                 while ((partial = rPartialPattern.exec(rawTemplate)) != null) {
                     partials.push(partial[1] + hbs.extname);
                 }
                 await hbs.registerPartials(partials);
+                partials = [];
             }
 
             // Load layout if specified
@@ -227,6 +229,16 @@ Hbs.prototype.middleware = function (options) {
 
                 if (layout !== false) {
                     var rawLayout = await hbs.loadLayoutFile(layout);
+                    // register template partials from layout
+                    if (hbs.partialsPath !== '' && this.disableCache) {
+                        var partial;
+                        while ((partial = rPartialPattern.exec(rawLayout)) != null) {
+                            partials.push(partial[1] + hbs.extname);
+                        }
+                        await hbs.registerPartials(partials);
+                        partials = [];
+                    }
+
                     hbs.cache[tpl].layoutTemplate = hbs.handlebars.compile(rawLayout);
                 } else {
                     hbs.cache[tpl].layoutTemplate = hbs.handlebars.compile('{{{body}}}');
