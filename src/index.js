@@ -210,7 +210,7 @@ Hbs.prototype.middleware = function (options) {
             };
 
             // register template partials from template
-            if (hbs.partialsPath !== '' && this.disableCache) {
+            if (hbs.partialsPath !== '' && hbs.disableCache) {
                 var partial;
                 while ((partial = rPartialPattern.exec(rawTemplate)) != null) {
                     partials.push(partial[1] + hbs.extname);
@@ -230,7 +230,7 @@ Hbs.prototype.middleware = function (options) {
                 if (layout !== false) {
                     var rawLayout = await hbs.loadLayoutFile(layout);
                     // register template partials from layout
-                    if (hbs.partialsPath !== '' && this.disableCache) {
+                    if (hbs.partialsPath !== '' && hbs.disableCache) {
                         var partial;
                         while ((partial = rPartialPattern.exec(rawLayout)) != null) {
                             partials.push(partial[1] + hbs.extname);
